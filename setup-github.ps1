@@ -17,15 +17,16 @@ if ($ghInstalled) {
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "✓ Repository created and code pushed!" -ForegroundColor Green
+        Write-Host "Repository created and code pushed!" -ForegroundColor Green
         Write-Host ""
         Write-Host "Next: Enable GitHub Pages" -ForegroundColor Yellow
-        Write-Host "1. Visit: https://github.com/$((gh api user --jq .login))/$repoName/settings/pages" -ForegroundColor Cyan
+        $ghUser = gh api user --jq .login
+        Write-Host "1. Visit: https://github.com/$ghUser/$repoName/settings/pages" -ForegroundColor Cyan
         Write-Host "2. Source: Branch 'main', Folder '/ (root)'" -ForegroundColor White
         Write-Host "3. Click Save" -ForegroundColor White
         Write-Host ""
         Write-Host "Your site will be live at:" -ForegroundColor Green
-        Write-Host "https://$((gh api user --jq .login)).github.io/$repoName/" -ForegroundColor Cyan
+        Write-Host "https://$ghUser.github.io/$repoName/" -ForegroundColor Cyan
     }
 } else {
     Write-Host "GitHub CLI not found. Manual setup required:" -ForegroundColor Yellow
@@ -48,15 +49,16 @@ if ($ghInstalled) {
     Write-Host "STEP 2: Connecting and pushing..." -ForegroundColor Cyan
     Write-Host ""
     
-    git remote add origin "https://github.com/$username/$repoName.git"
+    $remoteUrl = "https://github.com/$username/$repoName.git"
+    git remote add origin $remoteUrl
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✓ Remote added" -ForegroundColor Green
+        Write-Host "Remote added" -ForegroundColor Green
         git branch -M main
         git push -u origin main
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host ""
-            Write-Host "✓ Code pushed successfully!" -ForegroundColor Green
+            Write-Host "Code pushed successfully!" -ForegroundColor Green
             Write-Host ""
             Write-Host "STEP 3: Enable GitHub Pages" -ForegroundColor Cyan
             Write-Host "1. Visit: https://github.com/$username/$repoName/settings/pages" -ForegroundColor White
@@ -72,8 +74,8 @@ if ($ghInstalled) {
             Write-Host "Error pushing to GitHub. Please check your credentials." -ForegroundColor Red
         }
     } else {
-        Write-Host "Remote might already exist. Checking..." -ForegroundColor Yellow
-        git remote set-url origin "https://github.com/$username/$repoName.git"
+        Write-Host "Remote might already exist. Updating..." -ForegroundColor Yellow
+        git remote set-url origin $remoteUrl
         git push -u origin main
     }
 }
@@ -82,4 +84,3 @@ Write-Host ""
 Write-Host "Alternative: Instant deploy with Netlify" -ForegroundColor Cyan
 Write-Host "Visit: https://app.netlify.com/drop" -ForegroundColor Green
 Write-Host ""
-
