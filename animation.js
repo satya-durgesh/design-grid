@@ -8,8 +8,8 @@
     
     // Configuration
     const config = {
-        speed: 2,
-        gridSize: 120,
+        speed: 0.5,
+        gridSize: 100,
         perspective: 0.5,
         colors: {
             purple: '#9b59b6',
@@ -167,9 +167,9 @@
         // Update animation
         animationOffset += config.speed;
         
-        // Draw grid layers
-        const depth = 200;
-        for (let z = 0; z < depth; z++) {
+        // Draw grid layers - optimized depth
+        const depth = 150;
+        for (let z = 0; z < depth; z += 1) {
             const zPos = z + animationOffset;
             const scale = config.perspective / (z + config.perspective);
             const visibleSize = config.gridSize * scale;
