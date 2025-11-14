@@ -5,34 +5,31 @@ const ctx = canvas.getContext('2d');
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    config.vanishingPoint = { x: canvas.width / 2, y: canvas.height / 2 };
+    config.vanishingPoint = { x: canvas.width / 2, y: canvas.height * 0.4 };
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
 
 // Configuration
 const config = {
-    speed: 0.08,
-    gridSize: 60,
+    speed: 0.1,
+    gridSize: 80,
     colors: {
         primary: '#9b59b6',    // Purple
         secondary: '#1abc9c',  // Teal
         white: '#ffffff',
-        dark: '#1a1a2e'
+        background: '#ffffff',  // White background
+        gridLine: '#e0e0e0'     // Light gray grid lines
     },
-    vanishingPoint: { x: canvas.width / 2, y: canvas.height / 2 },
-    perspective: 0.6
+    vanishingPoint: { x: canvas.width / 2, y: canvas.height * 0.4 }, // Higher vanishing point for roadway effect
+    perspective: 0.5
 };
 
-// Data-related terms
+// Data-related terms - prioritizing the key terms from reference images
 const dataTerms = [
     'Data Engineering', 'Python', 'SQL', 'Machine Learning',
     'Model Training', 'ETL', 'BIG DATA', 'Data Scientist',
-    'DATA PIPELINES', 'Apache Spark', 'Hadoop', 'Kafka',
-    'Data Warehouse', 'Data Lake', 'TensorFlow', 'PyTorch',
-    'Pandas', 'NumPy', 'Scikit-learn', 'Deep Learning',
-    'Neural Networks', 'Feature Engineering', 'Data Mining',
-    'Data Analytics', 'Cloud Computing', 'AWS', 'Azure'
+    'DATA PIPELINES', 'DATA QUALITY', 'CLOUD', 'Data'
 ];
 
 // Animation state
@@ -57,17 +54,26 @@ function drawGridSquare(x, y, z, term = null) {
         return;
     }
 
-    // Determine checkerboard pattern
+    // Determine checkerboard pattern - 3-color pattern (purple, teal, white)
     const gridX = Math.floor(x / config.gridSize);
     const gridY = Math.floor(y / config.gridSize);
-    const isEven = (gridX + gridY) % 2 === 0;
+    const patternIndex = (gridX + gridY) % 3;
     
-    // Choose color based on checkerboard pattern with depth-based opacity
-    const opacity = Math.min(1, Math.max(0.3, 1 - z / 150));
-    const primaryColor = config.colors.primary;
-    const secondaryColor = config.colors.secondary;
+    // Choose color based on checkerboard pattern
+    // Pattern: purple, teal, white, purple, teal, white...
+    let squareColor;
+    if (patternIndex === 0) {
+        squareColor = config.colors.primary; // Purple
+    } else if (patternIndex === 1) {
+        squareColor = config.colors.secondary; // Teal
+    } else {
+        squareColor = config.colors.white; // White
+    }
     
-    ctx.fillStyle = isEven ? primaryColor : secondaryColor;
+    // Opacity based on depth - less fade for better visibility
+    const opacity = Math.min(1, Math.max(0.4, 1 - z / 200));
+    
+    ctx.fillStyle = squareColor;
     ctx.globalAlpha = opacity;
     
     // Draw square with rounded corners effect
@@ -78,30 +84,34 @@ function drawGridSquare(x, y, z, term = null) {
         pos.size
     );
     
-    // Add border
-    ctx.strokeStyle = config.colors.white;
-    ctx.lineWidth = Math.max(0.5, pos.size * 0.02);
-    ctx.globalAlpha = opacity * 0.8;
-    ctx.strokeRect(
-        pos.x - pos.size / 2,
-        pos.y - pos.size / 2,
-        pos.size,
-        pos.size
-    );
+    // Add border - only on colored squares, not white ones
+    if (squareColor !== config.colors.white) {
+        ctx.strokeStyle = config.colors.gridLine;
+        ctx.lineWidth = Math.max(1, pos.size * 0.015);
+        ctx.globalAlpha = opacity * 0.6;
+        ctx.strokeRect(
+            pos.x - pos.size / 2,
+            pos.y - pos.size / 2,
+            pos.size,
+            pos.size
+        );
+    }
     
     ctx.globalAlpha = 1;
     
     // Draw term if provided and square is large enough
-    if (term && pos.size > 25) {
+    // Only show terms on colored squares (not white)
+    if (term && pos.size > 20 && squareColor !== config.colors.white) {
+        // Use white text on colored squares, dark text on white squares (though we skip white)
         ctx.fillStyle = config.colors.white;
-        ctx.font = `bold ${Math.max(10, pos.size * 0.12)}px Arial`;
+        ctx.font = `bold ${Math.max(12, pos.size * 0.15)}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.globalAlpha = Math.min(1, opacity * 1.5);
+        ctx.globalAlpha = Math.min(1, opacity * 1.2);
         
         // Word wrap for long terms
         const words = term.split(' ');
-        const lineHeight = pos.size * 0.18;
+        const lineHeight = pos.size * 0.2;
         const startY = pos.y - (words.length - 1) * lineHeight / 2;
         
         words.forEach((word, i) => {
@@ -118,15 +128,27 @@ function animate(currentTime) {
     const deltaTime = currentTime - lastTime;
     lastTime = currentTime;
     
-    // Clear canvas with gradient background
-    const gradient = ctx.createRadialGradient(
-        config.vanishingPoint.x, config.vanishingPoint.y, 0,
-        config.vanishingPoint.x, config.vanishingPoint.y, canvas.width
-    );
-    gradient.addColorStop(0, '#1a1a2e');
-    gradient.addColorStop(1, '#0a0a0a');
-    ctx.fillStyle = gradient;
+    // Clear canvas with white background (matching reference images)
+    ctx.fillStyle = config.colors.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw subtle grid lines extending from the perspective
+    ctx.strokeStyle = config.colors.gridLine;
+    ctx.lineWidth = 0.5;
+    ctx.globalAlpha = 0.3;
+    
+    // Draw perspective lines from vanishing point
+    for (let i = -10; i <= 10; i++) {
+        const angle = (i * Math.PI) / 20;
+        const startX = config.vanishingPoint.x + Math.cos(angle) * 100;
+        const startY = config.vanishingPoint.y + Math.sin(angle) * 100;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(config.vanishingPoint.x, config.vanishingPoint.y);
+        ctx.stroke();
+    }
+    
+    ctx.globalAlpha = 1;
     
     // Update animation offset
     animationOffset += config.speed;
@@ -149,9 +171,14 @@ function animate(currentTime) {
                 const x = i * config.gridSize;
                 const y = j * config.gridSize;
                 
-                // Select term based on position (for variety)
+                // Calculate position to check size before selecting term
+                const tempPos = getGridPosition(x, y, zPos);
+                
+                // Select term based on position - show more frequently
                 let term = null;
-                if (z % 4 === 0 && i % 3 === 0 && j % 3 === 0 && z > 5) {
+                // Show terms more often, especially on colored squares
+                const patternIndex = (Math.floor(x / config.gridSize) + Math.floor(y / config.gridSize)) % 3;
+                if (patternIndex !== 2 && z % 3 === 0 && (i % 2 === 0 || j % 2 === 0) && z > 3 && tempPos.size > 30) {
                     const termIndex = (Math.abs(i) + Math.abs(j) + gridZ) % dataTerms.length;
                     term = dataTerms[termIndex];
                 }
