@@ -1,0 +1,13 @@
+{
+  "name": "data-roadway-animation",
+  "version": "1.0.0",
+  "description": "Animated perspective roadway with data engineering terms",
+  "scripts": {
+    "start": "npx http-server -p 8000 -o",
+    "dev": "npx http-server -p 8000 -o -c-1"
+  },
+  "keywords": ["animation", "data-engineering", "perspective", "canvas"],
+  "author": "",
+  "license": "MIT"
+}
+
