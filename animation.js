@@ -1,143 +1,129 @@
-// Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', function() {
-    const canvas = document.getElementById('roadwayCanvas');
-    if (!canvas) {
-        console.error('Canvas element not found!');
-        return;
+// Optimized animated perspective grid background
+(function() {
+    'use strict';
+    
+    let canvas, ctx;
+    let animationFrame;
+    let animationOffset = 0;
+    
+    // Configuration
+    const config = {
+        speed: 2,
+        gridSize: 120,
+        perspective: 0.5,
+        colors: {
+            purple: '#9b59b6',
+            teal: '#1abc9c',
+            white: '#ffffff',
+            lightGray: '#f5f5f5',
+            gridLine: '#d0d0d0'
+        },
+        vanishingPoint: { x: 0, y: 0 }
+    };
+    
+    // Data terms - matching reference images
+    const dataTerms = [
+        'Data Engineering', 'Python', 'SQL', 'Machine Learning',
+        'Model Training', 'Data Scientist', 'ETL', 'BIG DATA',
+        'DATA PIPELINES', 'CLOUD', 'DATA QUALITY'
+    ];
+    
+    // Initialize
+    function init() {
+        canvas = document.getElementById('roadwayCanvas');
+        if (!canvas) {
+            console.error('Canvas not found');
+            return false;
+        }
+        
+        ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('Canvas context not available');
+            return false;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Start animation
+        animate();
+        return true;
     }
     
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        console.error('Could not get 2D context!');
-        return;
-    }
-
-    // Configuration - must be defined before resizeCanvas
-    const config = {
-        speed: 0.12,
-        gridSize: 100,
-        colors: {
-            primary: '#9b59b6',    // Purple
-            secondary: '#1abc9c',  // Teal/Cyan
-            white: '#ffffff',
-            lightGray: '#f5f5f5',  // Light gray for white squares variation
-            background: '#ffffff',  // White background
-            gridLine: '#d0d0d0'     // Light gray grid lines
-        },
-        vanishingPoint: { x: 0, y: 0 }, // Will be set in resizeCanvas
-        perspective: 0.45
-    };
-
-    // Set canvas size
+    // Resize canvas
     function resizeCanvas() {
+        if (!canvas) return;
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        config.vanishingPoint = { x: canvas.width / 2, y: canvas.height * 0.35 };
+        config.vanishingPoint.x = canvas.width / 2;
+        config.vanishingPoint.y = canvas.height * 0.35;
     }
     
-    // Initialize canvas size
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Mandatory data-related terms from the comprehensive prompt
-    const dataTerms = [
-        'Data Engineering',
-        'Python',
-        'SQL',
-        'Machine Learning',
-        'Model Training',
-        'Data Scientist',
-        'ETL',
-        'BIG DATA',
-        'DATA PIPELINES',
-        'CLOUD',
-        'DATA QUALITY'
-    ];
-
-    // Animation state
-    let animationOffset = 0;
-    let lastTime = 0;
-
-    // Calculate grid position in 3D space
-    function getGridPosition(x, y, z) {
+    // Get 3D position
+    function get3DPosition(x, y, z) {
         const scale = config.perspective / (z + config.perspective);
-        const screenX = config.vanishingPoint.x + (x - config.vanishingPoint.x) * scale;
-        const screenY = config.vanishingPoint.y + (y - config.vanishingPoint.y) * scale;
-        const screenSize = config.gridSize * scale;
-        return { x: screenX, y: screenY, size: screenSize, scale: scale };
+        return {
+            x: config.vanishingPoint.x + (x - config.vanishingPoint.x) * scale,
+            y: config.vanishingPoint.y + (y - config.vanishingPoint.y) * scale,
+            size: config.gridSize * scale,
+            scale: scale
+        };
     }
-
-    // Draw a single grid square
-    function drawGridSquare(x, y, z, term = null) {
-        const pos = getGridPosition(x, y, z);
+    
+    // Draw grid square
+    function drawSquare(x, y, z, term) {
+        const pos = get3DPosition(x, y, z);
         
-        if (pos.size < 1 || pos.x < -200 || pos.x > canvas.width + 200 || 
-            pos.y < -200 || pos.y > canvas.height + 200) {
-            return;
-        }
-
-        // Determine checkerboard pattern - 3-color pattern (purple, teal, white/light gray)
+        // Skip if too small or off screen
+        if (pos.size < 2) return;
+        if (pos.x < -pos.size || pos.x > canvas.width + pos.size) return;
+        if (pos.y < -pos.size || pos.y > canvas.height + pos.size) return;
+        
+        // Determine checkerboard pattern (3-color: purple, teal, light gray)
         const gridX = Math.floor(x / config.gridSize);
         const gridY = Math.floor(y / config.gridSize);
-        const patternIndex = (gridX + gridY) % 3;
+        const pattern = (gridX + gridY) % 3;
         
-        // Choose color based on checkerboard pattern
-        // Pattern: purple, teal, white/light gray, purple, teal, white/light gray...
-        let squareColor;
-        if (patternIndex === 0) {
-            squareColor = config.colors.primary; // Purple
-        } else if (patternIndex === 1) {
-            squareColor = config.colors.secondary; // Teal/Cyan
+        let color;
+        if (pattern === 0) {
+            color = config.colors.purple;
+        } else if (pattern === 1) {
+            color = config.colors.teal;
         } else {
-            squareColor = config.colors.lightGray; // Light gray (for white squares variation)
+            color = config.colors.lightGray;
         }
         
-        // Opacity based on depth - maintain visibility longer
-        const opacity = Math.min(1, Math.max(0.5, 1 - z / 180));
+        // Opacity based on depth
+        const opacity = Math.min(1, Math.max(0.4, 1 - z / 150));
         
-        ctx.fillStyle = squareColor;
+        // Draw square
+        ctx.fillStyle = color;
         ctx.globalAlpha = opacity;
+        ctx.fillRect(pos.x - pos.size / 2, pos.y - pos.size / 2, pos.size, pos.size);
         
-        // Draw square with rounded corners effect
-        ctx.fillRect(
-            pos.x - pos.size / 2,
-            pos.y - pos.size / 2,
-            pos.size,
-            pos.size
-        );
-        
-        // Add border on all squares for distinct checkerboard pattern
+        // Draw border
         ctx.strokeStyle = config.colors.gridLine;
-        ctx.lineWidth = Math.max(1, pos.size * 0.02);
-        ctx.globalAlpha = opacity * 0.7;
-        ctx.strokeRect(
-            pos.x - pos.size / 2,
-            pos.y - pos.size / 2,
-            pos.size,
-            pos.size
-        );
+        ctx.lineWidth = Math.max(1, pos.size * 0.015);
+        ctx.globalAlpha = opacity * 0.6;
+        ctx.strokeRect(pos.x - pos.size / 2, pos.y - pos.size / 2, pos.size, pos.size);
         
-        ctx.globalAlpha = 1;
-        
-        // Draw term if provided and square is large enough
-        // Show terms prominently on colored squares (purple and teal)
-        if (term && pos.size > 25 && squareColor !== config.colors.lightGray) {
-            // Use white text on colored squares for high contrast
+        // Draw term on colored squares
+        if (term && pattern !== 2 && pos.size > 30) {
             ctx.fillStyle = config.colors.white;
-            ctx.font = `bold ${Math.max(14, pos.size * 0.18)}px Arial`;
+            ctx.font = `bold ${Math.max(12, pos.size * 0.16)}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.globalAlpha = Math.min(1, opacity * 1.3);
+            ctx.globalAlpha = Math.min(1, opacity * 1.2);
             
-            // Add text shadow for better readability
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            // Text shadow for readability
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
             ctx.shadowBlur = 2;
             ctx.shadowOffsetX = 1;
             ctx.shadowOffsetY = 1;
             
-            // Word wrap for long terms
+            // Split multi-word terms
             const words = term.split(' ');
-            const lineHeight = pos.size * 0.22;
+            const lineHeight = pos.size * 0.2;
             const startY = pos.y - (words.length - 1) * lineHeight / 2;
             
             words.forEach((word, i) => {
@@ -149,84 +135,87 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
-            ctx.globalAlpha = 1;
         }
-    }
-
-    // Main animation loop
-    function animate(currentTime) {
-        if (!lastTime) lastTime = currentTime;
-        const deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
         
-        // Clear canvas with white background (matching reference images)
-        ctx.fillStyle = config.colors.background;
+        ctx.globalAlpha = 1;
+    }
+    
+    // Main animation loop
+    function animate() {
+        if (!canvas || !ctx) return;
+        
+        // Clear with white background
+        ctx.fillStyle = config.colors.white;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Draw subtle perspective grid lines extending from vanishing point
+        // Draw perspective lines (subtle)
         ctx.strokeStyle = config.colors.gridLine;
         ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.25;
-        
-        // Draw radial perspective lines from vanishing point (creating roadway effect)
-        for (let i = -15; i <= 15; i++) {
-            const angle = (i * Math.PI) / 30;
-            const startX = config.vanishingPoint.x + Math.cos(angle) * canvas.width * 0.6;
-            const startY = config.vanishingPoint.y + Math.sin(angle) * canvas.height * 0.6;
+        ctx.globalAlpha = 0.2;
+        for (let i = -12; i <= 12; i++) {
+            const angle = (i * Math.PI) / 24;
+            const dist = Math.min(canvas.width, canvas.height) * 0.5;
+            const startX = config.vanishingPoint.x + Math.cos(angle) * dist;
+            const startY = config.vanishingPoint.y + Math.sin(angle) * dist;
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(config.vanishingPoint.x, config.vanishingPoint.y);
             ctx.stroke();
         }
-        
         ctx.globalAlpha = 1;
         
-        // Update animation offset for continuous forward movement
+        // Update animation
         animationOffset += config.speed;
         
-        // Draw grid extending into the distance - seamless looping
-        const depth = 300;
-        
-        for (let z = 0; z < depth; z += 1) {
+        // Draw grid layers
+        const depth = 200;
+        for (let z = 0; z < depth; z++) {
             const zPos = z + animationOffset;
-            const gridZ = Math.floor(zPos);
-            
-            // Calculate how many squares to draw at this depth
             const scale = config.perspective / (z + config.perspective);
             const visibleSize = config.gridSize * scale;
-            const gridCount = Math.ceil(Math.max(canvas.width, canvas.height) / visibleSize) + 8;
+            const gridCount = Math.ceil(Math.max(canvas.width, canvas.height) / visibleSize) + 6;
             
             for (let i = -gridCount; i <= gridCount; i++) {
                 for (let j = -gridCount; j <= gridCount; j++) {
                     const x = i * config.gridSize;
                     const y = j * config.gridSize;
                     
-                    // Calculate position to check size before selecting term
-                    const tempPos = getGridPosition(x, y, zPos);
-                    
-                    // Select term based on position - show more frequently and prominently
+                    // Select term for colored squares
                     let term = null;
-                    const patternIndex = (Math.floor(x / config.gridSize) + Math.floor(y / config.gridSize)) % 3;
+                    const gridX = Math.floor(x / config.gridSize);
+                    const gridY = Math.floor(y / config.gridSize);
+                    const pattern = (gridX + gridY) % 3;
                     
-                    // Show terms on colored squares (purple and teal) more frequently
-                    // Ensure all mandatory terms appear prominently
-                    if (patternIndex !== 2 && z > 2 && tempPos.size > 35) {
-                        // Increase frequency: show terms on every 2nd depth level and on alternating grid positions
-                        if (z % 2 === 0 && (i % 2 === 0 || j % 2 === 0)) {
-                            const termIndex = (Math.abs(i) + Math.abs(j) + gridZ) % dataTerms.length;
+                    if (pattern !== 2 && z > 2 && z % 2 === 0 && (i % 2 === 0 || j % 2 === 0)) {
+                        const tempPos = get3DPosition(x, y, zPos);
+                        if (tempPos.size > 35) {
+                            const termIndex = (Math.abs(i) + Math.abs(j) + Math.floor(zPos)) % dataTerms.length;
                             term = dataTerms[termIndex];
                         }
                     }
                     
-                    drawGridSquare(x, y, zPos, term);
+                    drawSquare(x, y, zPos, term);
                 }
             }
         }
         
-        requestAnimationFrame(animate);
+        // Continue animation loop
+        animationFrame = requestAnimationFrame(animate);
     }
+    
+    // Start when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (animationFrame) {
+            cancelAnimationFrame(animationFrame);
+        }
+    });
+})();
 
-    // Start animation
-    requestAnimationFrame(animate);
-});
 

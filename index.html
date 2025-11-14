@@ -13,6 +13,17 @@
         <p>Navigate through the world of data science and engineering</p>
     </div>
     <script src="animation.js"></script>
+    <script>
+        // Fallback check
+        window.addEventListener('load', function() {
+            const canvas = document.getElementById('roadwayCanvas');
+            if (canvas) {
+                console.log('Canvas loaded:', canvas.width, 'x', canvas.height);
+            } else {
+                console.error('Canvas element missing!');
+            }
+        });
+    </script>
 </body>
 </html>
 
